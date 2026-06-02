@@ -23,7 +23,8 @@
   --red:#ff4060;--r:12px;--rs:8px;--rx:6px;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,sans-serif;min-height:100vh;
+html{overscroll-behavior-y:none;touch-action:pan-x pan-y}
+body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,sans-serif;min-height:100vh;overscroll-behavior-y:none;
   background-image:radial-gradient(ellipse 80% 50% at 20% -10%,rgba(0,255,135,.04) 0%,transparent 60%),
   radial-gradient(ellipse 60% 40% at 80% 110%,rgba(157,78,221,.05) 0%,transparent 60%);}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--surface)}
@@ -2018,6 +2019,14 @@ function initApp(){
   setInterval(()=>{fetchCotacoes();fetchCotacoesExtra();},5*60*1000);
 }
 if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
+
+/* Bloqueia pull-to-refresh */
+let _tY=0;
+document.addEventListener('touchstart',e=>{_tY=e.touches[0].clientY;},{passive:true});
+document.addEventListener('touchmove',e=>{
+  const dy=e.touches[0].clientY-_tY;
+  if(dy>0&&(window.scrollY||document.documentElement.scrollTop)===0){e.preventDefault();}
+},{passive:false});
 </script>
 </body>
 </html>
