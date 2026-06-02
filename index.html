@@ -381,8 +381,9 @@ details.edu-card[open] summary{color:var(--purple);border-bottom:1px solid var(-
 .auth-err{padding:10px 14px;border-radius:var(--rs);font-size:13px;display:none}
 .auth-link{background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-align:center;padding:4px;font-family:'Inter',sans-serif;text-decoration:underline}
 #loading-screen{position:fixed;inset:0;z-index:9000;background:var(--bg);display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px}
-.spin-ico{font-size:40px;color:var(--green);filter:drop-shadow(0 0 14px var(--green));display:inline-block;animation:spin2 1.5s linear infinite}
+.spin-ico{font-size:40px;color:var(--green);filter:drop-shadow(0 0 14px var(--green));display:inline-block;animation:spin2 1.5s linear infinite;-webkit-animation:spin2 1.5s linear infinite}
 @keyframes spin2{to{transform:rotate(360deg)}}
+@-webkit-keyframes spin2{to{-webkit-transform:rotate(360deg)}}
 #main-app{display:none}
 </style>
 </head>
@@ -1107,8 +1108,11 @@ function showAuthMsg(msg,tipo){
   el.style.cssText=`display:block;background:${tipo==='ok'?'rgba(0,255,135,.1)':'rgba(255,64,96,.1)'};border:1px solid ${tipo==='ok'?'rgba(0,255,135,.3)':'rgba(255,64,96,.3)'};color:${tipo==='ok'?'var(--green)':'var(--red)'};padding:10px 14px;border-radius:var(--rs);font-size:13px`;
   el.textContent=msg;
 }
+let _appReady=false;
 db.auth.onAuthStateChange(async(event,session)=>{
   if(session){
+    if(_appReady)return;
+    _appReady=true;
     q('auth-screen').style.display='none';
     q('loading-screen').style.display='flex';
     await dbLoad();
@@ -1116,6 +1120,7 @@ db.auth.onAuthStateChange(async(event,session)=>{
     q('main-app').style.display='block';
     initApp();
   }else{
+    _appReady=false;
     q('auth-screen').style.display='flex';
     q('loading-screen').style.display='none';
     q('main-app').style.display='none';
@@ -1124,13 +1129,20 @@ db.auth.onAuthStateChange(async(event,session)=>{
 
 /* ── Data Layer ── */
 async function dbLoad(){
+  const limite=new Promise(r=>setTimeout(r,8000));
   try{
-    const[{data:p},{data:m}]=await Promise.all([
+    const corrida=Promise.all([
       db.from('finplan_portfolio').select('*').order('id'),
       db.from('finplan_metas').select('*').order('id')
     ]);
-    portfolio=(p||[]).map(i=>({...i,aportes:Array.isArray(i.aportes)?i.aportes:[]}));
-    metas=m||[];
+    const res=await Promise.race([corrida,limite.then(()=>null)]);
+    if(res){
+      const[{data:p},{data:m}]=res;
+      portfolio=(p||[]).map(i=>({...i,aportes:Array.isArray(i.aportes)?i.aportes:[]}));
+      metas=m||[];
+    }else{
+      toast('⚠️ Conexão lenta — dados serão carregados em breve','err');
+    }
   }catch(e){toast('⚠️ Erro ao carregar dados','err');}
 }
 async function dbSavePt(item){
