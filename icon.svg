@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="35%" cy="25%" r="75%">
+      <stop offset="0%" stop-color="#0d1f1a"/>
+      <stop offset="100%" stop-color="#07070f"/>
+    </radialGradient>
+    <linearGradient id="bar1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00ff87"/>
+      <stop offset="100%" stop-color="#00cc6a"/>
+    </linearGradient>
+    <linearGradient id="bar2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00d4ff"/>
+      <stop offset="100%" stop-color="#00a8cc"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="90" fill="url(#bg)"/>
+  <rect x="72"  y="300" width="62" height="120" rx="10" fill="url(#bar2)" opacity=".7"/>
+  <rect x="152" y="240" width="62" height="180" rx="10" fill="url(#bar1)" opacity=".75"/>
+  <rect x="232" y="190" width="62" height="230" rx="10" fill="url(#bar2)" opacity=".8"/>
+  <rect x="312" y="140" width="62" height="280" rx="10" fill="url(#bar1)" opacity=".85"/>
+  <rect x="392" y="90"  width="62" height="330" rx="10" fill="url(#bar2)"/>
+  <polyline points="103,300 183,240 263,190 343,140 423,90"
+    stroke="#ffffff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"
+    fill="none" opacity=".35"/>
+  <circle cx="103" cy="300" r="10" fill="#00ff87" opacity=".9"/>
+  <circle cx="183" cy="240" r="10" fill="#00ff87" opacity=".9"/>
+  <circle cx="263" cy="190" r="10" fill="#00ff87" opacity=".9"/>
+  <circle cx="343" cy="140" r="10" fill="#00ff87" opacity=".9"/>
+  <circle cx="423" cy="90"  r="10" fill="#00ff87"/>
+  <text x="256" y="468" font-size="58" text-anchor="middle" fill="#00ff87"
+    font-family="Arial,sans-serif" font-weight="800" letter-spacing="-2" opacity=".95">FinPlan</text>
+</svg>

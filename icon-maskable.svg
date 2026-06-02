@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#07070f"/>
+  <defs>
+    <linearGradient id="bar1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00ff87"/>
+      <stop offset="100%" stop-color="#00cc6a"/>
+    </linearGradient>
+    <linearGradient id="bar2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00d4ff"/>
+      <stop offset="100%" stop-color="#00a8cc"/>
+    </linearGradient>
+  </defs>
+  <rect x="90"  y="310" width="54" height="110" rx="8" fill="url(#bar2)" opacity=".75"/>
+  <rect x="162" y="255" width="54" height="165" rx="8" fill="url(#bar1)" opacity=".8"/>
+  <rect x="234" y="205" width="54" height="215" rx="8" fill="url(#bar2)" opacity=".85"/>
+  <rect x="306" y="155" width="54" height="265" rx="8" fill="url(#bar1)" opacity=".9"/>
+  <rect x="378" y="105" width="54" height="315" rx="8" fill="url(#bar2)"/>
+  <polyline points="117,310 189,255 261,205 333,155 405,105"
+    stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"
+    fill="none" opacity=".3"/>
+  <text x="256" y="462" font-size="52" text-anchor="middle" fill="#00ff87"
+    font-family="Arial,sans-serif" font-weight="800" letter-spacing="-1">FinPlan</text>
+</svg>
