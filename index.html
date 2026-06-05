@@ -2016,9 +2016,15 @@ function initApp(){
   q('mf-prazo').value=new Date(Date.now()+365*24*60*60*1000).toISOString().split('T')[0];
   renderExtras();onSim();renderPortfolio();renderMetas();renderEdu();atualizarInfoBackup();
   fetchCotacoes();fetchCotacoesExtra();
-  setInterval(()=>{fetchCotacoes();fetchCotacoesExtra();},5*60*1000);
+  setInterval(()=>{fetchCotacoes();fetchCotacoesExtra();},2*60*1000);
 }
 if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
+
+/* Atualiza cotações toda vez que o app fica visível */
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&_appReady){fetchCotacoes();fetchCotacoesExtra();}
+});
+window.addEventListener('focus',()=>{if(_appReady){fetchCotacoes();fetchCotacoesExtra();}});
 
 /* Bloqueia pull-to-refresh */
 let _tY=0;
