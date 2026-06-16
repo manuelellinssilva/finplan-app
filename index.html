@@ -705,6 +705,29 @@ details.edu-card[open] summary{color:var(--purple);border-bottom:1px solid var(-
         </div>
         <input type="range" class="teal" id="fs-rend" min="0.1" max="30" step="0.05" value="10.75" oninput="syncS('fs-rend','fn-rend')"/>
       </div>
+      <div class="sl-wrap" style="margin-top:10px">
+        <div class="sl-head">
+          <span class="sl-label">Indexador</span>
+          <div class="sl-right">
+            <select id="f-indexador" onchange="onIndexChange()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rx);padding:5px 10px;color:var(--teal);font:600 12px Inter,sans-serif;outline:none">
+              <option value="prefixado">Prefixado (% a.a.)</option>
+              <option value="cdi">% do CDI</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div id="f-cdi-wrap" style="display:none">
+        <div class="sl-wrap" style="margin-top:8px;background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);border-radius:var(--rs);padding:10px 12px">
+          <div class="sl-head">
+            <span class="sl-label">% do CDI <span id="cdi-label-taxa" style="color:var(--muted);font-size:11px">(CDI: 10,75% a.a.)</span></span>
+            <div class="sl-right">
+              <input type="number" class="num-field teal" id="fn-pctcdi" value="100" min="50" max="200" step="1" oninput="syncN('fs-pctcdi','fn-pctcdi');calcCDIRate()"/>
+              <span class="num-unit">% CDI = <span id="cdi-efet" style="color:var(--green);font-weight:700">10,75%</span></span>
+            </div>
+          </div>
+          <input type="range" class="teal" id="fs-pctcdi" min="50" max="200" step="1" value="100" oninput="syncS('fs-pctcdi','fn-pctcdi');calcCDIRate()"/>
+        </div>
+      </div>
     </div>
     <div class="form-grid">
       <div class="fg"><label>Pessoa</label><select id="f-pessoa"><option>Eu</option><option>Esposo</option><option>Casal (conjunto)</option></select></div>
@@ -1421,7 +1444,9 @@ function renderFIRE(salary,data,ret){
 let portfolio=[], editId=null, formOpen=false;
 const expanded={};
 
-function mRateInv(inv){return inv.periodo==='ao mês'?inv.rendimento/100:Math.pow(1+inv.rendimento/100,1/12)-1;}
+const CDI_ATUAL=10.75;
+function rendEfetivo(inv){return inv.indexador==='cdi'&&inv.pct_cdi?(inv.pct_cdi/100)*CDI_ATUAL:inv.rendimento;}
+function mRateInv(inv){const r=rendEfetivo(inv);return inv.periodo==='ao mês'?r/100:Math.pow(1+r/100,1/12)-1;}
 function cfrom(val,ds,now,mr){
   const s=new Date(ds+'T12:00:00');
   const m=Math.max(0,(now.getFullYear()-s.getFullYear())*12+(now.getMonth()-s.getMonth()));
@@ -1436,6 +1461,17 @@ function calcCur(inv){
 function totInv(inv){return inv.valor+(inv.aportes||[]).reduce((s,a)=>s+a.valor,0);}
 
 function updateFSl(){initSl('fs-val','fs-rend');}
+function onIndexChange(){
+  const isCdi=q('f-indexador').value==='cdi';
+  q('f-cdi-wrap').style.display=isCdi?'block':'none';
+  if(isCdi){calcCDIRate();initSl('fs-pctcdi');}
+}
+function calcCDIRate(){
+  const pct=+q('fs-pctcdi').value;
+  const efet=(pct/100)*CDI_ATUAL;
+  const el=q('cdi-efet');if(el)el.textContent=Rf(efet)+'%';
+  q('fs-rend').value=efet.toFixed(4); syncS('fs-rend','fn-rend');
+}
 function toggleForm(){if(formOpen&&!editId){cancelForm();return;}if(!formOpen)openForm(null);}
 function openForm(inv){
   formOpen=true;editId=inv?inv.id:null;
@@ -1448,6 +1484,10 @@ function openForm(inv){
   q('f-corretora').value=inv?inv.corretora:''; q('f-tipo').value=inv?inv.tipo:'Renda Fixa';
   q('f-data').value=inv?inv.data:today; q('f-periodo').value=inv?inv.periodo:'ao ano';
   q('f-notas').value=inv?inv.notas:''; q('f-submit').textContent=inv?'💾 Salvar':'✓ Adicionar';
+  q('f-indexador').value=inv?(inv.indexador||'prefixado'):'prefixado';
+  const pCdi=inv?(inv.pct_cdi||100):100;
+  q('fn-pctcdi').value=pCdi; q('fs-pctcdi').value=pCdi;
+  onIndexChange();
   updateFSl();
 }
 function cancelForm(){formOpen=false;editId=null;q('inv-form').style.display='none';q('btn-tf').textContent='+ Adicionar';}
@@ -1458,7 +1498,8 @@ async function submitForm(){
   const entry={id:editId||Date.now(),pessoa:q('f-pessoa').value,nome,
     corretora:q('f-corretora').value.trim(),tipo:q('f-tipo').value,valor,
     data:q('f-data').value,rendimento:+q('fs-rend').value,
-    periodo:q('f-periodo').value,notas:q('f-notas').value.trim(),aportes:existing.aportes||[]};
+    periodo:q('f-periodo').value,notas:q('f-notas').value.trim(),aportes:existing.aportes||[],
+    indexador:q('f-indexador').value,pct_cdi:q('f-indexador').value==='cdi'?+q('fn-pctcdi').value:null};
   const btn=q('f-submit');btn.textContent='…';btn.disabled=true;
   try{
     await dbSavePt(entry);
@@ -1561,7 +1602,7 @@ function renderInvCard(inv){
       <div class="is"><span class="isl">Ganho bruto</span><span class="isv ${earn>=0?'col-g':'col-r'}">${earn>=0?'+':''}${R(earn)}</span></div>
       <div class="is"><span class="isl">IR (${irR===0?'isento':(irR*100)+'%'})</span><span class="isv ${irAmt>0?'col-r':'col-g'}">${irAmt>0?'-'+R(irAmt):'Isento'}</span></div>
       <div class="is"><span class="isl">Lucro líquido</span><span class="isv ${netEarn>=0?'col-g':'col-r'}">${netEarn>=0?'+':''}${R(netEarn)}</span></div>
-      <div class="is"><span class="isl">Tempo / Taxa</span><span class="isv">${tempo} · ${Rf(inv.rendimento)}%</span></div>
+      <div class="is"><span class="isl">Tempo / Taxa</span><span class="isv">${tempo} · ${inv.indexador==='cdi'&&inv.pct_cdi?`<span style="color:var(--teal);font-weight:700">${Rf(inv.pct_cdi)}% CDI</span> <span style="color:var(--muted);font-size:11px">= ${Rf(rendEfetivo(inv))}%</span>`:`${Rf(inv.rendimento)}%`}</span></div>
     </div>
     <div class="inv-expand-row">
       <button class="btn-sm" onclick="toggleSec('ap_${inv.id}')">
