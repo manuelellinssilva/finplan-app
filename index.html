@@ -650,6 +650,14 @@ details.edu-card[open] summary{color:var(--purple);border-bottom:1px solid var(-
 
   <div class="three-col" id="port-bd" style="display:none"></div>
 
+  <!-- Gráfico de evolução -->
+  <div class="card" id="port-chart-card" style="display:none;margin-bottom:14px;padding:18px 18px 12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <span class="card-title" style="margin-bottom:0">📈 Evolução do patrimônio</span>
+    </div>
+    <canvas id="port-chart" height="160"></canvas>
+  </div>
+
   <!-- Backup / Restore -->
   <div class="card" style="background:var(--surface);margin-bottom:14px;padding:16px 18px">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
@@ -1442,7 +1450,7 @@ function renderFIRE(salary,data,ret){
 /* ═══════════════════════════════════════
    PORTFÓLIO
 ═══════════════════════════════════════ */
-let portfolio=[], editId=null, formOpen=false;
+let portfolio=[], editId=null, formOpen=false, _portChart=null;
 const expanded={};
 
 const CDI_ATUAL=10.75, IPCA_ATUAL=5.53;
@@ -1644,6 +1652,55 @@ function renderInvCard(inv){
   </div>`;
 }
 
+function renderPortChart(){
+  const card=q('port-chart-card');
+  if(!portfolio.length){card.style.display='none';if(_portChart){_portChart.destroy();_portChart=null;}return;}
+  const allDates=portfolio.map(i=>i.data).concat(portfolio.flatMap(i=>(i.aportes||[]).map(a=>a.data))).filter(Boolean);
+  if(!allDates.length){card.style.display='none';return;}
+  const earliest=new Date(Math.min(...allDates.map(d=>new Date(d+'T12:00:00'))));
+  const today=new Date();
+  const labels=[],valData=[],invData=[];
+  let cur=new Date(earliest.getFullYear(),earliest.getMonth(),1);
+  while(cur<=today){
+    const ptDate=new Date(Math.min(new Date(cur.getFullYear(),cur.getMonth()+1,0),today));
+    let tv=0,ti=0;
+    portfolio.forEach(inv=>{
+      const s=new Date(inv.data+'T12:00:00');
+      if(ptDate>=s){const mr=mRateInv(inv);tv+=cfrom(inv.valor,inv.data,ptDate,mr);ti+=inv.valor;}
+      (inv.aportes||[]).forEach(ap=>{
+        const as=new Date(ap.data+'T12:00:00');
+        if(ptDate>=as){const mr=mRateInv(inv);tv+=cfrom(ap.valor,ap.data,ptDate,mr);ti+=ap.valor;}
+      });
+    });
+    labels.push(cur.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}));
+    valData.push(+tv.toFixed(2));invData.push(+ti.toFixed(2));
+    cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);
+  }
+  card.style.display='block';
+  const ctx=q('port-chart').getContext('2d');
+  if(_portChart)_portChart.destroy();
+  const pts=labels.length>24?0:3;
+  _portChart=new Chart(ctx,{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Valor atual',data:valData,borderColor:'#00ff87',backgroundColor:'rgba(0,255,135,.08)',borderWidth:2,pointRadius:pts,fill:true,tension:.35},
+      {label:'Total investido',data:invData,borderColor:'#00d4ff',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,borderDash:[5,4],fill:false,tension:0}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:true,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{labels:{color:'#8888b0',font:{size:11},boxWidth:14}},
+        tooltip:{callbacks:{label:c=>' '+new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(c.raw)}}
+      },
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a4a70',font:{size:10},maxTicksLimit:12}},
+        y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a4a70',font:{size:10},callback:v=>'R$'+(v>=1000000?(v/1000000).toFixed(1)+'M':v>=1000?(v/1000).toFixed(0)+'k':v)}}
+      }
+    }
+  });
+}
+
 function renderPortfolio(){
   const ti=portfolio.reduce((s,i)=>s+totInv(i),0);
   const tc=portfolio.reduce((s,i)=>s+calcCur(i),0);
@@ -1660,6 +1717,7 @@ function renderPortfolio(){
       `<div class="card" style="margin-bottom:0"><div class="card-sub">${t}</div>
       ${Object.entries(o).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="bk-row"><span class="bk-lab">${k}</span><span class="bk-val">${R(v)}</span></div>`).join('')}</div>`).join('');
   }else{bd.style.display='none';}
+  renderPortChart();
   const wrap=q('inv-list-wrap');
   if(portfolio.length===0){
     wrap.innerHTML=`<div class="card"><div class="empty"><div class="empty-ico">📂</div><span>Nenhum investimento ainda.</span><span style="font-size:12px">Clique em "+ Adicionar" para começar.</span></div></div>`;return;
