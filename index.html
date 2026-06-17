@@ -712,6 +712,7 @@ details.edu-card[open] summary{color:var(--purple);border-bottom:1px solid var(-
             <select id="f-indexador" onchange="onIndexChange()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rx);padding:5px 10px;color:var(--teal);font:600 12px Inter,sans-serif;outline:none">
               <option value="prefixado">Prefixado (% a.a.)</option>
               <option value="cdi">% do CDI</option>
+              <option value="ipca">IPCA+</option>
             </select>
           </div>
         </div>
@@ -719,13 +720,13 @@ details.edu-card[open] summary{color:var(--purple);border-bottom:1px solid var(-
       <div id="f-cdi-wrap" style="display:none">
         <div class="sl-wrap" style="margin-top:8px;background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);border-radius:var(--rs);padding:10px 12px">
           <div class="sl-head">
-            <span class="sl-label">% do CDI <span id="cdi-label-taxa" style="color:var(--muted);font-size:11px">(CDI: 10,75% a.a.)</span></span>
+            <span class="sl-label"><span id="cdi-label-text">% do CDI</span> <span id="cdi-label-taxa" style="color:var(--muted);font-size:11px">(CDI: 10,75% a.a.)</span></span>
             <div class="sl-right">
-              <input type="number" class="num-field teal" id="fn-pctcdi" value="100" min="50" max="200" step="1" oninput="syncN('fs-pctcdi','fn-pctcdi');calcCDIRate()"/>
-              <span class="num-unit">% CDI = <span id="cdi-efet" style="color:var(--green);font-weight:700">10,75%</span></span>
+              <input type="number" class="num-field teal" id="fn-pctcdi" value="100" min="50" max="200" step="1" oninput="syncN('fs-pctcdi','fn-pctcdi');calcIndexRate()"/>
+              <span class="num-unit"><span id="cdi-unit-text">% CDI</span> = <span id="cdi-efet" style="color:var(--green);font-weight:700">10,75%</span></span>
             </div>
           </div>
-          <input type="range" class="teal" id="fs-pctcdi" min="50" max="200" step="1" value="100" oninput="syncS('fs-pctcdi','fn-pctcdi');calcCDIRate()"/>
+          <input type="range" class="teal" id="fs-pctcdi" min="50" max="200" step="1" value="100" oninput="syncS('fs-pctcdi','fn-pctcdi');calcIndexRate()"/>
         </div>
       </div>
     </div>
@@ -1444,8 +1445,12 @@ function renderFIRE(salary,data,ret){
 let portfolio=[], editId=null, formOpen=false;
 const expanded={};
 
-const CDI_ATUAL=10.75;
-function rendEfetivo(inv){return inv.indexador==='cdi'&&inv.pct_cdi?(inv.pct_cdi/100)*CDI_ATUAL:inv.rendimento;}
+const CDI_ATUAL=10.75, IPCA_ATUAL=5.53;
+function rendEfetivo(inv){
+  if(inv.indexador==='cdi'&&inv.pct_cdi) return (inv.pct_cdi/100)*CDI_ATUAL;
+  if(inv.indexador==='ipca'&&inv.pct_cdi!=null) return IPCA_ATUAL+(inv.pct_cdi||0);
+  return inv.rendimento;
+}
 function mRateInv(inv){const r=rendEfetivo(inv);return inv.periodo==='ao mês'?r/100:Math.pow(1+r/100,1/12)-1;}
 function cfrom(val,ds,now,mr){
   const s=new Date(ds+'T12:00:00');
@@ -1462,15 +1467,33 @@ function totInv(inv){return inv.valor+(inv.aportes||[]).reduce((s,a)=>s+a.valor,
 
 function updateFSl(){initSl('fs-val','fs-rend');}
 function onIndexChange(){
-  const isCdi=q('f-indexador').value==='cdi';
-  q('f-cdi-wrap').style.display=isCdi?'block':'none';
-  if(isCdi){calcCDIRate();initSl('fs-pctcdi');}
+  const idx=q('f-indexador').value;
+  const isCdi=idx==='cdi', isIpca=idx==='ipca';
+  q('f-cdi-wrap').style.display=(isCdi||isIpca)?'block':'none';
+  const sl=q('fs-pctcdi'),nm=q('fn-pctcdi');
+  if(isCdi){
+    q('cdi-label-text').textContent='% do CDI';
+    q('cdi-label-taxa').textContent='(CDI: '+Rf(CDI_ATUAL)+'% a.a.)';
+    q('cdi-unit-text').textContent='% CDI';
+    sl.min=50;sl.max=200;sl.step=1;nm.min=50;nm.max=200;nm.step=1;
+    if(+sl.value<50||+sl.value>200){sl.value=100;nm.value=100;}
+  }
+  if(isIpca){
+    q('cdi-label-text').textContent='Spread sobre o IPCA';
+    q('cdi-label-taxa').textContent='(IPCA: '+Rf(IPCA_ATUAL)+'% a.a.)';
+    q('cdi-unit-text').textContent='IPCA+';
+    sl.min=0;sl.max=15;sl.step=0.25;nm.min=0;nm.max=15;nm.step=0.25;
+    if(+sl.value>15){sl.value=6;nm.value=6;}
+  }
+  if(isCdi||isIpca){calcIndexRate();initSl('fs-pctcdi');}
 }
-function calcCDIRate(){
+function calcIndexRate(){
+  const idx=q('f-indexador').value;
   const pct=+q('fs-pctcdi').value;
-  const efet=(pct/100)*CDI_ATUAL;
+  let efet=idx==='cdi'?(pct/100)*CDI_ATUAL:idx==='ipca'?IPCA_ATUAL+pct:null;
+  if(efet===null)return;
   const el=q('cdi-efet');if(el)el.textContent=Rf(efet)+'%';
-  q('fs-rend').value=efet.toFixed(4); syncS('fs-rend','fn-rend');
+  q('fs-rend').value=efet.toFixed(4);syncS('fs-rend','fn-rend');
 }
 function toggleForm(){if(formOpen&&!editId){cancelForm();return;}if(!formOpen)openForm(null);}
 function openForm(inv){
@@ -1485,7 +1508,8 @@ function openForm(inv){
   q('f-data').value=inv?inv.data:today; q('f-periodo').value=inv?inv.periodo:'ao ano';
   q('f-notas').value=inv?inv.notas:''; q('f-submit').textContent=inv?'💾 Salvar':'✓ Adicionar';
   q('f-indexador').value=inv?(inv.indexador||'prefixado'):'prefixado';
-  const pCdi=inv?(inv.pct_cdi||100):100;
+  const idxVal=inv?(inv.indexador||'prefixado'):'prefixado';
+  const pCdi=inv&&inv.pct_cdi!=null?inv.pct_cdi:(idxVal==='ipca'?6:100);
   q('fn-pctcdi').value=pCdi; q('fs-pctcdi').value=pCdi;
   onIndexChange();
   updateFSl();
@@ -1499,7 +1523,7 @@ async function submitForm(){
     corretora:q('f-corretora').value.trim(),tipo:q('f-tipo').value,valor,
     data:q('f-data').value,rendimento:+q('fs-rend').value,
     periodo:q('f-periodo').value,notas:q('f-notas').value.trim(),aportes:existing.aportes||[],
-    indexador:q('f-indexador').value,pct_cdi:q('f-indexador').value==='cdi'?+q('fn-pctcdi').value:null};
+    indexador:q('f-indexador').value,pct_cdi:['cdi','ipca'].includes(q('f-indexador').value)?+q('fn-pctcdi').value:null};
   const btn=q('f-submit');btn.textContent='…';btn.disabled=true;
   try{
     await dbSavePt(entry);
@@ -1602,7 +1626,13 @@ function renderInvCard(inv){
       <div class="is"><span class="isl">Ganho bruto</span><span class="isv ${earn>=0?'col-g':'col-r'}">${earn>=0?'+':''}${R(earn)}</span></div>
       <div class="is"><span class="isl">IR (${irR===0?'isento':(irR*100)+'%'})</span><span class="isv ${irAmt>0?'col-r':'col-g'}">${irAmt>0?'-'+R(irAmt):'Isento'}</span></div>
       <div class="is"><span class="isl">Lucro líquido</span><span class="isv ${netEarn>=0?'col-g':'col-r'}">${netEarn>=0?'+':''}${R(netEarn)}</span></div>
-      <div class="is"><span class="isl">Tempo / Taxa</span><span class="isv">${tempo} · ${inv.indexador==='cdi'&&inv.pct_cdi?`<span style="color:var(--teal);font-weight:700">${Rf(inv.pct_cdi)}% CDI</span> <span style="color:var(--muted);font-size:11px">= ${Rf(rendEfetivo(inv))}%</span>`:`${Rf(inv.rendimento)}%`}</span></div>
+      <div class="is"><span class="isl">Tempo / Taxa</span><span class="isv">${tempo} · ${
+        inv.indexador==='cdi'&&inv.pct_cdi
+          ?`<span style="color:var(--teal);font-weight:700">${Rf(inv.pct_cdi)}% CDI</span> <span style="color:var(--muted);font-size:11px">= ${Rf(rendEfetivo(inv))}%</span>`
+        :inv.indexador==='ipca'&&inv.pct_cdi!=null
+          ?`<span style="color:var(--teal);font-weight:700">IPCA+${Rf(inv.pct_cdi)}%</span> <span style="color:var(--muted);font-size:11px">= ${Rf(rendEfetivo(inv))}%</span>`
+        :`${Rf(inv.rendimento)}%`
+      }</span></div>
     </div>
     <div class="inv-expand-row">
       <button class="btn-sm" onclick="toggleSec('ap_${inv.id}')">
